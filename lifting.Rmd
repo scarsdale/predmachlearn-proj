@@ -102,11 +102,20 @@ mkcommonsubset <- function(gettrain, gettest) {
         testset <- gettest()        
         completecols <- intersect(which(completecols(trainset)),
                                   which(completecols(testset)))
-        list(trainset[,completecols],
-             testset[,completecols])
+        list(training=trainset[,completecols],
+             testing=testset[,completecols])
     }
 }
 workingsets <- mkcommonsubset(gettrainset, gettestset)
+data <- workingsets()
+```
+
+Finally, the measurements were normalized before being used for training:
+
+```{r}
+preproc <- preProcess(data$training, method=c("center", "scale"))
+data$training <- predict(preproc, data$training)
+data$testing <- predict(preproc, data$testing)
 ```
 
 ## Learning Algorithm Evaluation
@@ -120,8 +129,47 @@ The implementations chosen were all provided by the `caret` library in R.
 The `parRF` method was used for a random forest, `svmLinear` for an SVM,
 and `nnet` for a neural network.
 
+```{r}
+candidate.algorithms <- c("parRF", "svmLinear", "nnet")
+```
+
 The algorithms were evaluated based on their accuracy, execution time required
 for training, and execution time required for prediction.
+
+```{r}
+mktrain <- function(dat) {
+    function(algname) {
+        train(dat[,ispredictor(dat)], dat[,isoutcome(dat)], method=algname)
+    }
+}
+mkconfusion <- function(dat) {
+    function(model) {
+        predictions <- predict(model, dat)
+        confusionMatrix(predictions, dat[,isoutcome(dat)])
+    }
+}
+train.algorithms <- function(dat, algs) {
+    #RNGkind("L'Ecuyer-CMRG")
+    set.seed(0451)
+    #mclapply(algs, mktrain(dat))
+    lapply(algs, mktrain(dat))
+}
+test.models <- function(dat, models) {
+    #mclapply(models, mkconfusion(dat))
+    lapply(models, mkconfusion(dat))
+}
+mktimer <- function(fn) {
+    function(...) {
+        system.time(fn(...))
+    }
+}
+time.training <- function(dat, algs) {
+    lapply(algs, mktimer(mktrain(dat)))
+}
+time.prediction <- function(dat, models) {
+    lapply(models, mktimer(mkconfusion(dat)))
+}
+```
 
 
 [1]: http://groupware.les.inf.puc-rio.br/work.jsf?p1=11201
