@@ -69,6 +69,14 @@ mkcommonsubset <- function(gettrain, gettest) {
     }
 }
 workingsets <- mkcommonsubset(gettrainset, gettestset)
+mkpreproc <- function(dat, ...) {
+    preproc <- preProcess(dat[,ispredictor(dat)], ...)
+    function(dat) {
+        ndat <- dat
+        ndat[,ispredictor(dat)] <- predict(preproc, dat[,ispredictor(dat)])
+        ndat
+    }
+}
 isoutcome <- function(dat) {
     colnames(dat) %in% c("classe", "problem_id")
 }
