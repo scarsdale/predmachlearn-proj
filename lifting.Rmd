@@ -1,0 +1,128 @@
+# Classification of Weight-lifting Activity by Form
+
+## Abstract
+
+This report covers the application of several learning algorithms to classify
+weight-lifting activity based on measurements from wearable sensors.
+
+The dataset
+was taken from an experiment performed by [Velloso et al][1], in which study
+participants lifted a dumbbell either correctly or with one of four common
+mistakes. Measurements were taken from sensors on the dumbbell and on the
+participants' upper arm, forearm, and belt.
+
+Three learning algorithms were evaluated on this dataset: a random forest,
+an SVM (using a linear kernel), and a neural network.
+
+## Data Acquisition and Preprocessing
+
+```{R, echo=F}
+library(caret)
+download.server <- "https://d396qusza40orc.cloudfront.net"
+download.basedir <- "predmachlearn"
+mkurl <- function(file) {
+    paste(download.server, download.basedir, file, sep="/")
+}
+memoize.nullary <- function(fn) {
+    # memoize a function taking no arguments
+    rv <- NULL
+    function() {
+        if (is.null(rv)) {
+            rv <<- fn()
+        }
+        rv
+    }
+}
+mkgetdataset <- function(filename) {
+    memoize.nullary(function() {
+        if (!file.exists(filename)) {
+            download.file(mkurl(filename), destfile=filename, method="curl")
+        }
+        read.csv(filename)
+    })
+}
+gettrain.orig <- mkgetdataset("pml-training.csv")
+gettest.orig <- mkgetdataset("pml-testing.csv")
+trainset.orig <- gettrain.orig()
+testset.orig <- gettest.orig()
+```
+
+The dataset was acquired from a mirror, already separated into training and
+test sets consisting respectively of `r length(trainset.orig)` and
+`r length(testset.orig)` observations.
+
+The complete dataset contains `r ncol(trainset.orig)` variables; this includes
+the classification outcome as well as identifiers that should not be used as
+predictors, such as the subject's first name. These were discarded from both
+the training and test sets during pre-processing.
+
+Among the remaining variables, many had missing values. Many of variables
+with missing values were aggregate functions (like maximum and standard
+deviation) taken over the entire time period during which an activity was
+performed. These were removed for two reasons. First, while the original
+research had used a sliding window technique to evaluate multiple
+sequential observations, this analysis considers each observation independently;
+indeed, the `r length(testset.orig)` observations used as the test set are
+each taken from a different window and contain no aggregate values. Second,
+it was believed that the aggregate functions, being derived from other
+predictors, could be removed without loss of information.
+
+Ultimately, only variables with no missing values in either the training
+or test set were retained.
+
+```{R}
+mkprocdataset <- function(getfn) {
+    function () {
+        dat <- getfn()
+        # remove columns that are not predictors
+        rownames(dat) <- dat$X
+        dat$X <- NULL
+        dat$user_name <- NULL
+        # the assignment appears to require ignoring these time series-related
+        # variables and treating each observation independently
+        dat$raw_timestamp_part_1 <- NULL
+        dat$raw_timestamp_part_2 <- NULL
+        dat$cvtd_timestamp <- NULL
+        dat$new_window <- NULL
+        dat$num_window <- NULL
+        dat
+    }
+}
+gettrainset <- mkprocdataset(gettrain.orig)
+gettestset <- mkprocdataset(gettest.orig)
+sapplycols <- function(dat, fn) {
+    sapply(colnames(dat), function(colname) { fn(dat[,colname]) })
+}
+iscomplete <- function(v) {
+    !any(is.na(v))
+}
+mkcommonsubset <- function(gettrain, gettest) {
+    function () {
+        trainset <- gettrain()
+        testset <- gettest()        
+        completecols <- intersect(which(completecols(trainset)),
+                                  which(completecols(testset)))
+        list(trainset[,completecols],
+             testset[,completecols])
+    }
+}
+workingsets <- mkcommonsubset(gettrainset, gettestset)
+```
+
+## Learning Algorithm Evaluation
+
+Three learning algorithms were evaluated on this dataset: a random forest,
+a support vector machine using a linear kernel, and a neural network. These
+algorithms were chosen based on their strong performance in a learning
+algorithm bake-off presented by [Caruana and Niculescu-Mizil][2] in 2006.
+
+The implementations chosen were all provided by the `caret` library in R.
+The `parRF` method was used for a random forest, `svmLinear` for an SVM,
+and `nnet` for a neural network.
+
+The algorithms were evaluated based on their accuracy, execution time required
+for training, and execution time required for prediction.
+
+
+[1]: http://groupware.les.inf.puc-rio.br/work.jsf?p1=11201
+[2]: http://www.cs.cornell.edu/~caruana/ctp/ct.papers/caruana.icml06.pdf
