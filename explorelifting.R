@@ -1,7 +1,6 @@
 library(caret)
-#library(doMC)
-#registerDoMC()
-set.seed(0451)
+library(doMC)
+registerDoMC()
 download.server <- "https://d396qusza40orc.cloudfront.net"
 download.basedir <- "predmachlearn"
 mkurl <- function(file) {
@@ -104,13 +103,10 @@ mkconfusion <- function(dat) {
     }
 }
 train.algorithms <- function(dat, algs) {
-    #RNGkind("L'Ecuyer-CMRG")
     set.seed(0451)
-    #mclapply(algs, mktrain(dat))
     lapply(algs, mktrain(dat))
 }
 test.models <- function(dat, models) {
-    #mclapply(models, mkconfusion(dat))
     lapply(models, mkconfusion(dat))
 }
 mktimer <- function(fn) {
@@ -126,9 +122,9 @@ time.prediction <- function(dat, models) {
 }
 # selected based on comparison at
 # http://www.cs.cornell.edu/~caruana/ctp/ct.papers/caruana.icml06.pdf
-# originally tried ada and blackboost also, but they don't seem to work here
+# originally tried ada, treebag, and blackboost also,
+# but couldn't get them to work
 candidate.algorithms <- c("parRF",
-                          "treebag",
                           "svmLinear",
                           "nnet")
 split.data <- function(dat, p) {
@@ -138,10 +134,11 @@ tryout <- function(p) {
     sets <- workingsets()
     trainset <- sets[[1]]
     subtrainidx <- split.data(trainset, p)
-    subtrain <- trainset[subtrainidx,]
-    subtest <- trainset[-subtrainidx,]
-    #algs <- candidate.algorithms
-    algs <- c("rf", "svmLinear", "nnet")
+    osubtrain <- trainset[subtrainidx,]
+    preproc <- mkpreproc(osubtrain, method=c("center", "scale"))
+    subtrain <- preproc(osubtrain)
+    subtest <- preproc(trainset[-subtrainidx,])
+    algs <- candidate.algorithms
     train.times <- time.training(subtrain, algs)
     models <- train.algorithms(subtrain, algs)
     prediction.times <- time.prediction(subtest, models)
