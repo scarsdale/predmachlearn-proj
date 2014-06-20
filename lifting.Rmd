@@ -16,7 +16,7 @@ an SVM (using a linear kernel), and a neural network.
 
 ## Data Acquisition and Preprocessing
 
-```{r, echo=F}
+```{r, echo=F, message=F}
 library(caret)
 download.server <- "https://d396qusza40orc.cloudfront.net"
 download.basedir <- "predmachlearn"
