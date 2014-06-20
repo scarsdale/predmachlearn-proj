@@ -64,8 +64,8 @@ mkcommonsubset <- function(gettrain, gettest) {
         testset <- gettest()        
         completecols <- intersect(which(completecols(trainset)),
                                   which(completecols(testset)))
-        list(trainset[,completecols],
-             testset[,completecols])
+        list(training=trainset[,completecols],
+             testing=testset[,completecols])
     }
 }
 workingsets <- mkcommonsubset(gettrainset, gettestset)
