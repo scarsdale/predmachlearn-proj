@@ -48,8 +48,8 @@ testset.orig <- gettest.orig()
 ```
 
 The dataset was acquired from a mirror, already separated into training and
-test sets consisting respectively of `r length(trainset.orig)` and
-`r length(testset.orig)` observations.
+test sets consisting respectively of `r nrow(trainset.orig)` and
+`r nrow(testset.orig)` observations.
 
 The complete dataset contains `r ncol(trainset.orig)` variables; this includes
 the classification outcome as well as identifiers that should not be used as
