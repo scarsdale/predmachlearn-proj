@@ -1,4 +1,4 @@
-# Classification of Weight-lifting Activity by Form
+# Evaluation of Learning Algorithms on Weight-lifting Activity Data
 
 ## Abstract
 
