@@ -157,7 +157,8 @@ ispredictor <- function(dat) {
 }
 mktrain <- function(dat) {
     function(algname) {
-        train(dat[,ispredictor(dat)], dat[,isoutcome(dat)], method=algname)
+        train(dat[,ispredictor(dat)], dat[,isoutcome(dat)], method=algname,
+              trControl=trainControl(method="cv", number=4))
     }
 }
 mkconfusion <- function(dat) {
