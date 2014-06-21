@@ -149,6 +149,12 @@ candidate.algorithms <- c("parRF", "nnet", "nb")
 
 
 ```{r}
+isoutcome <- function(dat) {
+    colnames(dat) %in% c("classe", "problem_id")
+}
+ispredictor <- function(dat) {
+    !isoutcome(dat)
+}
 mktrain <- function(dat) {
     function(algname) {
         train(dat[,ispredictor(dat)], dat[,isoutcome(dat)], method=algname)
