@@ -14,7 +14,7 @@ participants' upper arm, forearm, and belt.
 Three learning algorithms were evaluated on this dataset: a random forest,
 a neural network, and a na&iuml;ve Bayesian classifier.
 
-## DATA Acquisition and Preprocessing
+## Data Acquisition and Preprocessing
 
 ```{r, echo=F, message=F}
 library(caret)
