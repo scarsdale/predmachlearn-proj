@@ -111,26 +111,37 @@ test.models <- function(dat, models) {
 }
 mktimer <- function(fn) {
     function(...) {
-        system.time(fn(...))
+        t <- system.time(res <- fn(...))
+        list(t=t, res=res)
     }
 }
+timer.getresults <- function(l) {
+    lapply(l, function(ll) { ll$res })
+}
+timer.gettimes <- function(l) {
+    lapply(l, function(ll) { ll$t })
+}
 time.training <- function(dat, algs) {
-    lapply(algs, mktimer(mktrain(dat)))
+    res <- lapply(algs, mktimer(mktrain(dat)))
+    list(models=timer.getresults(res),
+         times=timer.gettimes(res))
 }
 time.prediction <- function(dat, models) {
-    lapply(models, mktimer(mkconfusion(dat)))
+    res <- lapply(models, mktimer(mkconfusion(dat)))
+    list(confusions=timer.getresults(res),
+         times=timer.gettimes(res))
 }
 # selected based on comparison at
 # http://www.cs.cornell.edu/~caruana/ctp/ct.papers/caruana.icml06.pdf
 # originally tried ada, treebag, and blackboost also,
 # but couldn't get them to work
 candidate.algorithms <- c("parRF",
-                          "svmLinear",
+                          "nb",
                           "nnet")
 split.data <- function(dat, p) {
     createDataPartition(dat[,isoutcome(dat)], list=F, p=p)    
 }
-tryout <- function(p) {
+getsplit.trainset <- function(p) {
     sets <- workingsets()
     trainset <- sets[[1]]
     subtrainidx <- split.data(trainset, p)
@@ -138,13 +149,28 @@ tryout <- function(p) {
     preproc <- mkpreproc(osubtrain, method=c("center", "scale"))
     subtrain <- preproc(osubtrain)
     subtest <- preproc(trainset[-subtrainidx,])
+    list(training=subtrain,
+         testing=subtest)
+}
+try.models <- function(p) {
+    subsets <- getsplit.trainset(p)
     algs <- candidate.algorithms
-    train.times <- time.training(subtrain, algs)
-    models <- train.algorithms(subtrain, algs)
-    prediction.times <- time.prediction(subtest, models)
-    confusions <- test.models(subtest, models)
-    list(train.times=train.times,
-         models=models,
-         prediction.times=prediction.times,
-         confusions=confusions)
+    train.res <- time.training(subsets$training, algs)
+    prediction.res <- time.prediction(subsets$testing, train.res$models)
+    list(train.times=train.res$times,
+         models=train.res$models,
+         prediction.times=prediction.res$times,
+         confusions=prediction.res$confusions)
+}
+elapsedtime <- function(t) {
+    t[3]
+}
+analyze.res <- function(res) {
+    data.frame(time.train=sapply(res$train.times, elapsedtime),
+               time.predict=sapply(res$prediction.times, elapsedtime),
+               train.accuracy=sapply(res$models, function(m) {
+                   max(m$results$Accuracy) }),
+               test.accuracy=sapply(res$confusions, function(cm) {
+                   cm$overall["Accuracy"] }),
+               row.names=sapply(res$models, function(m) { m$method }))
 }
