@@ -93,13 +93,20 @@ do.rfcv <- function(dat) {
 }
 mktrain <- function(dat) {
     function(algname) {
-        train(dat[,ispredictor(dat)], dat[,isoutcome(dat)], method=algname)
+        train(dat[,ispredictor(dat)], dat[,isoutcome(dat)],
+              method=algname,
+              trControl=trainControl(method="cv", number=4))
     }
 }
 mkconfusion <- function(dat) {
     function(model) {
         predictions <- predict(model, dat)
         confusionMatrix(predictions, dat[,isoutcome(dat)])
+    }
+}
+mkpredict <- function(dat) {
+    function(model) {
+        predict(model, dat)
     }
 }
 train.algorithms <- function(dat, algs) {
@@ -173,4 +180,25 @@ analyze.res <- function(res) {
                test.accuracy=sapply(res$confusions, function(cm) {
                    cm$overall["Accuracy"] }),
                row.names=sapply(res$models, function(m) { m$method }))
+}
+# produce predictions in the format required for the submission
+get.predictions <- function() {
+    sets <- workingsets()
+    preproc <- mkpreproc(sets$training, method=c("center", "scale"))
+    trainset <- preproc(sets$training)
+    testset <- preproc(sets$testing)
+    models <- train.algorithms(trainset, candidate.algorithms)
+    predictions <- lapply(models, mkpredict(testset))
+    names(predictions) <- sapply(res$models, function(m) { m$method })
+    as.data.frame(predictions)
+}
+pml_write_files <- function(x) {
+    n = length(x)
+    for (i in 1:n) {
+        filename = paste0("problem_id_", i, ".txt")
+        write.table(x[i], file=filename, quote=F, row.names=F, col.names=F)
+    }
+}
+write.predictions <- function(x) {
+    pml_write_files(as.character(x))
 }
