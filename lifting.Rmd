@@ -12,7 +12,9 @@ mistakes. Measurements were taken from sensors on the dumbbell and on the
 participants' upper arm, forearm, and belt.
 
 Three learning algorithms were evaluated on this dataset: a random forest,
-a neural network, and a na&iuml;ve Bayesian classifier.
+a neural network, and a na&iuml;ve Bayesian classifier. The random forest
+was found to offer the strongest performance, with over 99% accuracy on the
+training set and and estimated out-of-sample error rate of around 0.01.
 
 ## Data Acquisition and Preprocessing
 
