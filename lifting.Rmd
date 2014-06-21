@@ -249,9 +249,12 @@ are the elapsed wall-clock time when executed on a 2.6 GHz Intel Core i7
 with 8 threads (4 physical cores and 2 threads per core). The `doMC` package
 was employed to parallelize the training process where possible.
 
-```{r, echo=F, results="asis", cache=T, message=F, warning=F}
+```{r, echo=F, results="hide", cache=T, message=F, warning=F}
 res <- try.models(0.8)
 resana <- analyze.res(res)
+```
+
+```{r, echo=F, results="asis", message=F, warning=F}
 kable(resana, format="markdown")
 ```
 
