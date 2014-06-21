@@ -18,6 +18,9 @@ a neural network, and a na&iuml;ve Bayesian classifier.
 
 ```{r, echo=F, message=F}
 library(caret)
+library(knitr)
+library(doMC)
+registerDoMC()
 download.server <- "https://d396qusza40orc.cloudfront.net"
 download.basedir <- "predmachlearn"
 mkurl <- function(file) {
@@ -232,6 +235,28 @@ analyze.res <- function(res) {
 }
 ```
 
+## Evaluation Results
+
+The following table summarizes the results of this analysis when 80% of the
+original training set was used to train and 20% to test. Execution times
+are the elapsed wall-clock time when executed on a 2.6 GHz Intel Core i7
+with 8 threads (4 physical cores and 2 threads per core). The `doMC` package
+was employed to parallelize the training process where possible.
+
+```{r, echo=F, results="asis", cache=T}
+res <- try.models(0.8)
+resana <- analyze.res(res)
+kable(resana, format="markdown")
+```
+
+The random forest performs very well here, achieving around 99% accuracy
+on the training data and an estimated out-of-sample error rate of around 0.01.
+The neural network and na&iuml;ve Bayesian classifier perform substantially
+less well, with in-sample and out-of-sample accuracy around 70%. Their
+performance is similar to one another, despite neural networks having greatly
+outperformed na&iuml;ve Bayesian classifiers in the 2006 results. This may be
+an indication that the `nnet` method used here is ill-suited to this dataset,
+or that it requires intelligent parameter selection for good performance.
 
 [1]: http://groupware.les.inf.puc-rio.br/work.jsf?p1=11201
 [2]: http://www.cs.cornell.edu/~caruana/ctp/ct.papers/caruana.icml06.pdf
