@@ -12,9 +12,9 @@ mistakes. Measurements were taken from sensors on the dumbbell and on the
 participants' upper arm, forearm, and belt.
 
 Three learning algorithms were evaluated on this dataset: a random forest,
-an SVM (using a linear kernel), and a neural network.
+a neural network, and a na&iuml;ve Bayesian classifier.
 
-## Data Acquisition and Preprocessing
+## DATA Acquisition and Preprocessing
 
 ```{r, echo=F, message=F}
 library(caret)
@@ -96,6 +96,9 @@ sapplycols <- function(dat, fn) {
 iscomplete <- function(v) {
     !any(is.na(v))
 }
+completecols <- function(dat) {
+    sapplycols(dat, iscomplete)
+}
 mkcommonsubset <- function(gettrain, gettest) {
     function () {
         trainset <- gettrain()
@@ -113,28 +116,34 @@ data <- workingsets()
 Finally, the measurements were normalized before being used for training:
 
 ```{r}
-preproc <- preProcess(data$training, method=c("center", "scale"))
-data$training <- predict(preproc, data$training)
-data$testing <- predict(preproc, data$testing)
+mkpreproc <- function(dat, ...) {
+    preproc <- preProcess(dat[,ispredictor(dat)], ...)
+    function(dat) {
+        ndat <- dat
+        ndat[,ispredictor(dat)] <- predict(preproc, dat[,ispredictor(dat)])
+        ndat
+    }
+}
 ```
 
 ## Learning Algorithm Evaluation
 
 Three learning algorithms were evaluated on this dataset: a random forest,
-a support vector machine using a linear kernel, and a neural network. These
-algorithms were chosen based on their strong performance in a learning
+a neural network, and a na&iuml;ve Bayesian classifier. These
+algorithms were chosen based on their performance in a learning
 algorithm bake-off presented by [Caruana and Niculescu-Mizil][2] in 2006.
+In those results, random forests and neural networks were found to perform
+very strongly on a variety of datasets, while na&iuml;ve Bayesian classifiers
+were found to have very weak overall performance.
 
 The implementations chosen were all provided by the `caret` library in R.
-The `parRF` method was used for a random forest, `svmLinear` for an SVM,
-and `nnet` for a neural network.
+The `parRF` method was used for a random forest, `nnet` for a neural network,
+and `nb` for a na&iuml;ve Bayesian classifier.
 
 ```{r}
-candidate.algorithms <- c("parRF", "svmLinear", "nnet")
+candidate.algorithms <- c("parRF", "nnet", "nb")
 ```
 
-The algorithms were evaluated based on their accuracy, execution time required
-for training, and execution time required for prediction.
 
 ```{r}
 mktrain <- function(dat) {
@@ -148,26 +157,78 @@ mkconfusion <- function(dat) {
         confusionMatrix(predictions, dat[,isoutcome(dat)])
     }
 }
-train.algorithms <- function(dat, algs) {
-    #RNGkind("L'Ecuyer-CMRG")
-    set.seed(0451)
-    #mclapply(algs, mktrain(dat))
-    lapply(algs, mktrain(dat))
-}
-test.models <- function(dat, models) {
-    #mclapply(models, mkconfusion(dat))
-    lapply(models, mkconfusion(dat))
-}
 mktimer <- function(fn) {
     function(...) {
-        system.time(fn(...))
+        t <- system.time(res <- fn(...))
+        list(t=t, res=res)
     }
 }
+timer.getresults <- function(l) {
+    lapply(l, function(ll) { ll$res })
+}
+timer.gettimes <- function(l) {
+    lapply(l, function(ll) { ll$t })
+}
 time.training <- function(dat, algs) {
-    lapply(algs, mktimer(mktrain(dat)))
+    res <- lapply(algs, mktimer(mktrain(dat)))
+    list(models=timer.getresults(res),
+         times=timer.gettimes(res))
 }
 time.prediction <- function(dat, models) {
-    lapply(models, mktimer(mkconfusion(dat)))
+    res <- lapply(models, mktimer(mkconfusion(dat)))
+    list(confusions=timer.getresults(res),
+         times=timer.gettimes(res))
+}
+```
+
+Evaluation was carried out by splitting the training set into a new training
+set and test set. Each model was then trained on the training set and used
+to predict the test set. The execution time of the training and prediction
+tasks was recorded.
+
+```{r}
+split.data <- function(dat, p) {
+    createDataPartition(dat[,isoutcome(dat)], list=F, p=p)    
+}
+getsplit.trainset <- function(p) {
+    sets <- workingsets()
+    trainset <- sets[[1]]
+    subtrainidx <- split.data(trainset, p)
+    osubtrain <- trainset[subtrainidx,]
+    preproc <- mkpreproc(osubtrain, method=c("center", "scale"))
+    subtrain <- preproc(osubtrain)
+    subtest <- preproc(trainset[-subtrainidx,])
+    list(training=subtrain,
+         testing=subtest)
+}
+try.models <- function(p) {
+    subsets <- getsplit.trainset(p)
+    algs <- candidate.algorithms
+    train.res <- time.training(subsets$training, algs)
+    prediction.res <- time.prediction(subsets$testing, train.res$models)
+    list(train.times=train.res$times,
+         models=train.res$models,
+         prediction.times=prediction.res$times,
+         confusions=prediction.res$confusions)
+}
+```
+
+The algorithms were evaluated based on their in-sample accuracy,
+out-of-sample accuracy, execution time required
+for training, and execution time required for prediction.
+
+```{r}
+elapsedtime <- function(t) {
+    t[3]
+}
+analyze.res <- function(res) {
+    data.frame(time.train=sapply(res$train.times, elapsedtime),
+               time.predict=sapply(res$prediction.times, elapsedtime),
+               train.accuracy=sapply(res$models, function(m) {
+                   max(m$results$Accuracy) }),
+               test.accuracy=sapply(res$confusions, function(cm) {
+                   cm$overall["Accuracy"] }),
+               row.names=sapply(res$models, function(m) { m$method }))
 }
 ```
 
