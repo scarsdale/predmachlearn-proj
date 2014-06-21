@@ -268,9 +268,10 @@ outperformed na&iuml;ve Bayesian classifiers in the 2006 results. This may be
 an indication that the `nnet` method used here is ill-suited to this dataset,
 or that it requires intelligent parameter selection for good performance.
 
+
 The neural network required the smallest amount of time both to train and to
-produce predictions for the test set. The random forest took about three times
-as long to train, and the na&iuml;ve Bayesian classifier about ten times as long.
+produce predictions for the test set. The remaining algorithms took about 2.5
+times as long to train.
 Execution time required for prediction was negligible for the random forest and
 neural network, but was around one minute for the na&iuml;ve Bayesian classifier.
 
